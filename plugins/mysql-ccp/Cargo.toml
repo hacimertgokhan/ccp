@@ -2,9 +2,10 @@
 name = "mysql-ccp"
 version.workspace = true
 edition.workspace = true
-description = "CCP server for MySQL/MariaDB (read-only, schema-introspecting)"
+license.workspace = true
+description = "CCP server for MySQL / MariaDB (read-only, schema-introspecting, relation-aware)"
 
 [dependencies]
 ccp-proto = { path = "../../crates/ccp-proto" }
+ccp-sql = { path = "../../crates/ccp-sql" }
 mysql = "28.0.4"
-serde_json = "1.0.154"

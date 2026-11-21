@@ -125,9 +125,16 @@ pub fn parse_query(input: &str) -> Result<Vec<Selection>, String> {
     Ok(out)
 }
 
-fn parse_selection(toks: &[Tok], mut pos: usize, depth: usize) -> Result<(Selection, usize), String> {
+fn parse_selection(
+    toks: &[Tok],
+    mut pos: usize,
+    depth: usize,
+) -> Result<(Selection, usize), String> {
     if depth > MAX_SELECTION_DEPTH {
-        return Err(format!("selection nesting exceeds max depth ({})", MAX_SELECTION_DEPTH));
+        return Err(format!(
+            "selection nesting exceeds max depth ({})",
+            MAX_SELECTION_DEPTH
+        ));
     }
     let name = match toks.get(pos) {
         Some(Tok::Ident(s)) => s.clone(),

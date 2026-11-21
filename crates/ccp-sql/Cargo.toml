@@ -1,0 +1,10 @@
+[package]
+name = "ccp-sql"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared engine for CCP database servers: introspection, relations, safe SQL generation, MCP front end"
+
+[dependencies]
+ccp-proto = { path = "../ccp-proto" }
+serde_json = "1.0.154"

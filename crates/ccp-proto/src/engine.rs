@@ -39,9 +39,12 @@ fn materialize(result: FieldResult, sel: &Selection) -> Value {
         FieldResult::Missing => Value::Null,
         FieldResult::Error(e) => Value::Object(vec![("error".to_string(), Value::Str(e))]),
         FieldResult::Node(node) => resolve_node(node.as_ref(), &sel.sub),
-        FieldResult::List(nodes) => {
-            Value::List(nodes.iter().map(|n| resolve_node(n.as_ref(), &sel.sub)).collect())
-        }
+        FieldResult::List(nodes) => Value::List(
+            nodes
+                .iter()
+                .map(|n| resolve_node(n.as_ref(), &sel.sub))
+                .collect(),
+        ),
     }
 }
 

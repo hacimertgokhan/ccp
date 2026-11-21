@@ -1,0 +1,21 @@
+name: Feature request
+description: A question you could not ask, or a protocol improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What context do you need that CCP cannot give you today?
+      description: Describe the question you want to ask and what blocks you.
+    validations: { required: true }
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed query or behaviour
+      description: How would you like to write the query, and what should come back?
+      render: text
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [protocol, SQL servers, MCP front end, documentation, benchmark, other]

@@ -1,7 +1,22 @@
 [workspace]
 resolver = "3"
-members = ["crates/ccp-proto", "crates/ccp", "plugins/mysql-ccp"]
+members = [
+    "crates/ccp-proto",
+    "crates/ccp-sql",
+    "crates/ccp",
+    "plugins/mysql-ccp",
+    "plugins/postgres-ccp",
+    "plugins/sqlite-ccp",
+]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/hacimertgokhan/ccp"
+authors = ["Hacı Mert Gökhan"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,11 @@
+[package]
+name = "sqlite-ccp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CCP server for SQLite files (read-only, schema-introspecting, relation-aware)"
+
+[dependencies]
+ccp-proto = { path = "../../crates/ccp-proto" }
+ccp-sql = { path = "../../crates/ccp-sql" }
+rusqlite = { version = "0.37.0", features = ["bundled"] }

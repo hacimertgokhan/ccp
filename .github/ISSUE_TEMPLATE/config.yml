@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/hacimertgokhan/ccp/security/advisories/new
+    about: Report vulnerabilities privately, not as a public issue.
+  - name: Question or idea
+    url: https://github.com/hacimertgokhan/ccp/discussions
+    about: Ask questions and share ideas.

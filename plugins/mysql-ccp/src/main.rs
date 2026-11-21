@@ -1,118 +1,148 @@
-//! mysql-ccp: a CCP server for MySQL / MariaDB, built on `ccp-proto`.
-//!
-//! Add it straight to Claude (MCP over stdio); see README. Connection settings come from the
-//! environment: CCP_HOST, CCP_PORT (default 3306), CCP_USER, CCP_PASSWORD,
-//! CCP_DBNAME. It introspects the database once, advertises a CCP schema, then
-//! answers queries such as `users(limit:10,active:1){id name}`.
-//!
-//! Safety model
-//!  * read-only: the session is `READ ONLY` and only SELECTs are generated;
-//!  * table/column names come from `information_schema`, never from the
-//!    caller, and are backtick-quoted; unknown names are ignored;
-//!  * every caller-supplied value is a bound parameter, never interpolated;
-//!  * result size is capped (see MAX_LIMIT).
+//! mysql-ccp: CCP server for MySQL / MariaDB.
+//! Env: CCP_HOST, CCP_PORT (3306), CCP_USER, CCP_PASSWORD, CCP_DBNAME.
 
-mod mcp;
-mod sql;
-
-use ccp_proto::engine::{Args, FieldResult, Resolvable, RootResolver};
-use ccp_proto::query::Selection;
-use ccp_proto::serve::serve_stdio;
 use ccp_proto::value::Value;
+use ccp_sql::{
+    Backend, Catalog, Column, DbValue, Dialect, ForeignKey, Select, Table, build_sql, env_required,
+    scrub,
+};
 use mysql::prelude::Queryable;
 use mysql::{Conn, OptsBuilder};
-use sql::{Column, Table};
 use std::cell::RefCell;
 use std::time::Duration;
 
+struct MysqlDialect;
+impl Dialect for MysqlDialect {
+    fn quote(&self, ident: &str) -> String {
+        format!("`{}`", ident.replace('`', "``"))
+    }
+}
+
 struct Mysql {
     conn: RefCell<Conn>,
-    tables: Vec<Table>,
-    version: String,
+    password: String,
 }
 
-struct RowNode(Vec<(String, Value)>);
-
-impl Resolvable for RowNode {
-    fn resolve_field(&self, field: &str, _args: &Args) -> FieldResult {
-        match self.0.iter().find(|(k, _)| k == field) {
-            Some((_, v)) => FieldResult::Scalar(v.clone()),
-            None => FieldResult::Missing,
-        }
+impl Mysql {
+    fn err(&self, e: mysql::Error) -> String {
+        scrub(&e.to_string(), &self.password)
     }
 }
 
-struct TableNode(Table);
-
-impl Resolvable for TableNode {
-    fn resolve_field(&self, field: &str, _args: &Args) -> FieldResult {
-        match field {
-            "name" => FieldResult::Scalar(Value::Str(self.0.name.clone())),
-            "columns" => FieldResult::List(
-                self.0
-                    .columns
-                    .iter()
-                    .map(|c| Box::new(ColumnNode(c.clone())) as Box<dyn Resolvable>)
-                    .collect(),
-            ),
-            _ => FieldResult::Missing,
-        }
+fn to_value(v: &mysql::Value) -> Value {
+    match v {
+        mysql::Value::NULL => Value::Null,
+        mysql::Value::Int(i) => Value::Int(*i),
+        mysql::Value::UInt(u) => i64::try_from(*u)
+            .map(Value::Int)
+            .unwrap_or_else(|_| Value::Str(u.to_string())),
+        mysql::Value::Bytes(b) => Value::Str(String::from_utf8_lossy(b).into_owned()),
+        other => Value::Str(other.as_sql(true).trim_matches('\'').to_string()),
     }
 }
 
-struct ColumnNode(Column);
+impl Backend for Mysql {
+    fn kind(&self) -> &'static str {
+        "MySQL"
+    }
 
-impl Resolvable for ColumnNode {
-    fn resolve_field(&self, field: &str, _args: &Args) -> FieldResult {
-        match field {
-            "name" => FieldResult::Scalar(Value::Str(self.0.name.clone())),
-            "type" => FieldResult::Scalar(Value::Str(self.0.data_type.clone())),
-            _ => FieldResult::Missing,
+    fn version(&self) -> String {
+        self.conn
+            .borrow_mut()
+            .query_first("SELECT VERSION()")
+            .ok()
+            .flatten()
+            .unwrap_or_default()
+    }
+
+    fn introspect(&self) -> Result<Catalog, String> {
+        let mut conn = self.conn.borrow_mut();
+        let cols: Vec<(String, String, String)> = conn
+            .query(
+                "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS \
+                 WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION",
+            )
+            .map_err(|e| self.err(e))?;
+        let pks: Vec<(String, String)> = conn
+            .query(
+                "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE \
+                 WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'PRIMARY' ORDER BY TABLE_NAME, ORDINAL_POSITION",
+            )
+            .map_err(|e| self.err(e))?;
+        let fks: Vec<(String, String, String, String, String)> = conn
+            .query(
+                "SELECT CONSTRAINT_NAME, TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME \
+                 FROM information_schema.KEY_COLUMN_USAGE \
+                 WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL",
+            )
+            .map_err(|e| self.err(e))?;
+
+        let mut tables: Vec<Table> = Vec::new();
+        for (t, c, ty) in cols {
+            let col = Column {
+                name: c,
+                data_type: ty.to_lowercase(),
+            };
+            match tables.last_mut() {
+                Some(last) if last.name == t => last.columns.push(col),
+                _ => tables.push(Table {
+                    name: t,
+                    columns: vec![col],
+                    ..Default::default()
+                }),
+            }
         }
+        for (t, c) in pks {
+            if let Some(tb) = tables.iter_mut().find(|x| x.name == t) {
+                tb.pk.push(c);
+            }
+        }
+        // Composite foreign keys (several rows per constraint) are not exposed.
+        for (name, t, c, rt, rc) in &fks {
+            let parts = fks.iter().filter(|f| &f.0 == name && &f.1 == t).count();
+            if parts == 1
+                && let Some(tb) = tables.iter_mut().find(|x| &x.name == t)
+            {
+                tb.fks.push(ForeignKey {
+                    column: c.clone(),
+                    ref_table: rt.clone(),
+                    ref_column: rc.clone(),
+                });
+            }
+        }
+        Ok(Catalog { tables })
+    }
+
+    fn select(&self, q: &Select) -> Result<Vec<Vec<Value>>, String> {
+        let (sql, params) = build_sql(&MysqlDialect, q)?;
+        let params: Vec<mysql::Value> = params
+            .into_iter()
+            .map(|p| match p {
+                DbValue::Int(i) => mysql::Value::Int(i),
+                DbValue::Str(s) => mysql::Value::Bytes(s.into_bytes()),
+            })
+            .collect();
+        let rows: Vec<mysql::Row> = self
+            .conn
+            .borrow_mut()
+            .exec(sql, params)
+            .map_err(|e| self.err(e))?;
+        Ok(rows
+            .into_iter()
+            .map(|r| r.unwrap().iter().map(to_value).collect())
+            .collect())
     }
 }
 
-impl RootResolver for Mysql {
-    fn resolve_root(&self, name: &str, args: &Args, sub: &[Selection]) -> FieldResult {
-        if name == "_tables" {
-            return FieldResult::List(
-                self.tables
-                    .iter()
-                    .map(|t| Box::new(TableNode(t.clone())) as Box<dyn Resolvable>)
-                    .collect(),
-            );
-        }
-        let Some(table) = self.tables.iter().find(|t| t.name == name) else {
-            return FieldResult::Missing;
-        };
-        let (query, params, cols) = sql::build_select(table, args, sub);
-        let rows: Result<Vec<mysql::Row>, _> = self.conn.borrow_mut().exec(query, params);
-        match rows {
-            Ok(rows) => FieldResult::List(
-                rows.into_iter()
-                    .map(|row| {
-                        let values = row.unwrap();
-                        let fields = cols.iter().cloned().zip(values.iter().map(sql::to_value)).collect();
-                        Box::new(RowNode(fields)) as Box<dyn Resolvable>
-                    })
-                    .collect(),
-            ),
-            Err(e) => FieldResult::Error(e.to_string()),
-        }
-    }
-}
-
-fn env(name: &str) -> Result<String, String> {
-    std::env::var(name).map_err(|_| format!("{} is not set", name))
-}
-
-fn connect() -> Result<Mysql, String> {
-    let host = env("CCP_HOST")?;
-    let user = env("CCP_USER")?;
-    let dbname = env("CCP_DBNAME")?;
+fn connect() -> Result<Box<dyn Backend>, String> {
+    let host = env_required("CCP_HOST")?;
+    let user = env_required("CCP_USER")?;
+    let dbname = env_required("CCP_DBNAME")?;
     let password = std::env::var("CCP_PASSWORD").unwrap_or_default();
     let port: u16 = match std::env::var("CCP_PORT") {
-        Ok(p) => p.parse().map_err(|_| "CCP_PORT is not a valid port".to_string())?,
+        Ok(p) => p
+            .parse()
+            .map_err(|_| "CCP_PORT is not a valid port".to_string())?,
         Err(_) => 3306,
     };
     // NOTE: plain TCP (no TLS yet). Fine for localhost or a tunnelled link.
@@ -123,31 +153,15 @@ fn connect() -> Result<Mysql, String> {
         .pass(Some(password.clone()))
         .db_name(Some(dbname))
         .tcp_connect_timeout(Some(Duration::from_secs(5)));
-    let scrub = |e: mysql::Error| {
-        let m = e.to_string();
-        if password.is_empty() { m } else { m.replace(&password, "***") }
-    };
-    let mut conn = Conn::new(opts).map_err(&scrub)?;
-    conn.query_drop("SET SESSION TRANSACTION READ ONLY").map_err(&scrub)?;
-    let version: String = conn.query_first("SELECT VERSION()").map_err(&scrub)?.unwrap_or_default();
-    let tables = sql::introspect(&mut conn).map_err(&scrub)?;
-    Ok(Mysql { conn: RefCell::new(conn), tables, version })
+    let mut conn = Conn::new(opts).map_err(|e| scrub(&e.to_string(), &password))?;
+    conn.query_drop("SET SESSION TRANSACTION READ ONLY")
+        .map_err(|e| scrub(&e.to_string(), &password))?;
+    Ok(Box::new(Mysql {
+        conn: RefCell::new(conn),
+        password,
+    }))
 }
 
 fn main() {
-    // Default: MCP over stdio (what Claude launches). `--ccp`: raw CCP line
-    // protocol (SCHEMA / PING / query lines) for non-MCP clients.
-    if !std::env::args().any(|a| a == "--ccp") {
-        return mcp::run();
-    }
-    let db = match connect() {
-        Ok(db) => db,
-        Err(e) => {
-            eprintln!("mysql-ccp: {}", e);
-            std::process::exit(1);
-        }
-    };
-    let schema = sql::schema_text(&db.tables);
-    let info = format!("MySQL {} ({} tables)", db.version, db.tables.len());
-    serve_stdio(&schema, &db, &|| Ok(info.clone()));
+    ccp_sql::main("mysql-ccp", "MySQL", connect);
 }

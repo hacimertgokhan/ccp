@@ -1,7 +1,10 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "ccp", about = "CCP: a compact, GraphQL-style query protocol (demo)")]
+#[command(
+    name = "ccp",
+    about = "CCP, the Core Context Protocol: demo server and byte-size comparison"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,

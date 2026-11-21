@@ -1,4 +1,4 @@
-use crate::engine::{execute, RootResolver};
+use crate::engine::{RootResolver, execute};
 use crate::query::parse_query;
 use std::io::{self, BufRead, Write};
 

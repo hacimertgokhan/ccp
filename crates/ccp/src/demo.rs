@@ -1,6 +1,6 @@
 use crate::schema;
-use ccp_proto::engine::{execute, Args, FieldResult, Resolvable, RootResolver};
-use ccp_proto::query::{parse_query, ArgValue, Selection};
+use ccp_proto::engine::{Args, FieldResult, Resolvable, RootResolver, execute};
+use ccp_proto::query::{ArgValue, Selection, parse_query};
 use ccp_proto::serve::serve_stdio;
 use ccp_proto::value::Value;
 use std::rc::Rc;
@@ -183,39 +183,39 @@ fn demo_db() -> Db {
         posts: vec![
             PostRow {
                 id: 10,
-                title: "CCP nedir",
-                body: "CCP, MCP'ye alternatif kompakt bir protokol taslagidir ve tool call sayisini azaltmayi hedefler.",
+                title: "What is CCP",
+                body: "CCP, the Core Context Protocol, delivers the core context a model needs in a single request.",
                 author_id: 1,
             },
             PostRow {
                 id: 11,
-                title: "GraphQL yaklasimi",
-                body: "Tek sorguda nested alanlari cekerek round trip sayisini dusurur.",
+                title: "One request, nested fields",
+                body: "Related data comes back nested in one call, cutting round trips.",
                 author_id: 1,
             },
             PostRow {
                 id: 12,
                 title: "Schema advertisement",
-                body: "Sema bir kere gonderilir, her cagrida tekrarlanmaz.",
+                body: "The schema is sent once and never repeated per call.",
                 author_id: 2,
             },
         ],
         comments: vec![
             CommentRow {
                 id: 100,
-                body: "Guzel ozet.",
+                body: "Nice summary.",
                 author_name: "Ayse",
                 post_id: 10,
             },
             CommentRow {
                 id: 101,
-                body: "SNMP analojisi tam oturdu.",
+                body: "The core-context idea fits well.",
                 author_name: "Mert",
                 post_id: 10,
             },
             CommentRow {
                 id: 102,
-                body: "Round trip azaltmak gercekten fark yaratiyor.",
+                body: "Fewer round trips really makes a difference.",
                 author_name: "Mert",
                 post_id: 12,
             },
@@ -239,11 +239,14 @@ fn naive_multi_call_bytes() -> (String, String) {
         r#"{"tool":"get_user","args":{"id":1}}"#.to_string(),
         r#"{"id":1,"name":"Mert","email":"mert@example.com"}"#.to_string(),
         r#"{"tool":"get_posts","args":{"author_id":1}}"#.to_string(),
-        r#"[{"id":10,"title":"CCP nedir","body":"CCP, MCP'ye alternatif kompakt bir protokol taslagidir ve tool call sayisini azaltmayi hedefler.","author_id":1},{"id":11,"title":"GraphQL yaklasimi","body":"Tek sorguda nested alanlari cekerek round trip sayisini dusurur.","author_id":1}]"#.to_string(),
+        r#"[{"id":10,"title":"What is CCP","body":"CCP, the Core Context Protocol, delivers the core context a model needs in a single request.","author_id":1},{"id":11,"title":"One request, nested fields","body":"Related data comes back nested in one call, cutting round trips.","author_id":1}]"#.to_string(),
         r#"{"tool":"get_comments","args":{"post_id":10}}"#.to_string(),
-        r#"[{"id":100,"body":"Guzel ozet.","author_name":"Ayse","post_id":10},{"id":101,"body":"SNMP analojisi tam oturdu.","author_name":"Mert","post_id":10}]"#.to_string(),
+        r#"[{"id":100,"body":"Nice summary.","author_name":"Ayse","post_id":10},{"id":101,"body":"The core-context idea fits well.","author_name":"Mert","post_id":10}]"#.to_string(),
     ];
-    (calls.join("\n"), "3 round trip, full objects (overfetch)".to_string())
+    (
+        calls.join("\n"),
+        "3 round trip, full objects (overfetch)".to_string(),
+    )
 }
 
 pub fn run_demo() {
@@ -267,4 +270,3 @@ pub fn run_demo() {
     println!("{}", naive_dump);
     println!("bytes: {}", naive_dump.len());
 }
-

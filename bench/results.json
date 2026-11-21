@@ -1,0 +1,128 @@
+{
+ "scenarios": [
+  {
+   "id": "point",
+   "title": "Point lookup: one user, 2 fields",
+   "ccp": 270,
+   "ccp_rt": 1,
+   "naive": 471,
+   "naive_rt": 1,
+   "careful": 283,
+   "careful_rt": 1,
+   "query": "users(id:42){name email}"
+  },
+  {
+   "id": "list100",
+   "title": "List 100 users, 2 fields",
+   "ccp": 2608,
+   "ccp_rt": 1,
+   "naive": 25259,
+   "naive_rt": 1,
+   "careful": 3405,
+   "careful_rt": 1,
+   "query": "users(limit:100){id name}"
+  },
+  {
+   "id": "wide1000",
+   "title": "List 1000 posts, id+title (big body column)",
+   "ccp": 49947,
+   "ccp_rt": 1,
+   "naive": 457635,
+   "naive_rt": 1,
+   "careful": 57944,
+   "careful_rt": 1,
+   "query": "posts(limit:1000){id title}"
+  },
+  {
+   "id": "filter",
+   "title": "Filter: one author's post titles",
+   "ccp": 304,
+   "ccp_rt": 1,
+   "naive": 1088,
+   "naive_rt": 1,
+   "careful": 316,
+   "careful_rt": 1,
+   "query": "posts(author_id:7){title}"
+  },
+  {
+   "id": "nested2",
+   "title": "Nested: user -> posts -> comments",
+   "ccp": 539,
+   "ccp_rt": 1,
+   "naive": 2067,
+   "naive_rt": 3,
+   "careful": 699,
+   "careful_rt": 1,
+   "query": "users(id:7){name posts{title comments{body}}}"
+  },
+  {
+   "id": "belongs",
+   "title": "Reverse relation: 50 posts with author name",
+   "ccp": 3660,
+   "ccp_rt": 1,
+   "naive": 35668,
+   "naive_rt": 2,
+   "careful": 3654,
+   "careful_rt": 1,
+   "query": "posts(limit:50){title author{name}}"
+  },
+  {
+   "id": "batch3",
+   "title": "Three independent lookups",
+   "ccp": 1109,
+   "ccp_rt": 1,
+   "naive": 2640,
+   "naive_rt": 3,
+   "careful": 1571,
+   "careful_rt": 3,
+   "query": "users(id:7){name email} posts(author_id:7){id title} comments(post_id:7){author_name body}"
+  }
+ ],
+ "scaling": [
+  {
+   "rows": 10,
+   "ccp": 447,
+   "naive": 2676,
+   "careful": 522
+  },
+  {
+   "rows": 100,
+   "ccp": 2610,
+   "naive": 25259,
+   "careful": 3405
+  },
+  {
+   "rows": 1000,
+   "ccp": 26013,
+   "naive": 253480,
+   "careful": 34008
+  }
+ ],
+ "session": {
+  "ccp": 7326,
+  "careful": 9330,
+  "naive": 44741,
+  "ccp_rt": 7,
+  "careful_rt": 12,
+  "naive_rt": 15
+ },
+ "setup": {
+  "ccp": 1444,
+  "base": 2807
+ },
+ "parity": true,
+ "latency_ms": {
+  "sqlite": [
+   2.683333499589935,
+   3.772292002395261
+  ],
+  "mysql": [
+   2.6485415000934154,
+   8.31912499779719
+  ],
+  "postgres": [
+   6.583646001672605,
+   10.75245800166158
+  ]
+ }
+}

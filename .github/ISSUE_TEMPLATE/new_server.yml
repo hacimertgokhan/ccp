@@ -1,0 +1,25 @@
+name: New server proposal
+description: Propose a CCP server for another database or data source
+labels: [new-server]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Data source
+      placeholder: Redis, MongoDB, a REST API …
+    validations: { required: true }
+  - type: textarea
+    id: shape
+    attributes:
+      label: How would it map onto CCP?
+      description: What are the roots, the fields, and (if any) the relations?
+    validations: { required: true }
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Will you build it?
+      options: ["Yes, I will open a pull request", "I would like help", "No, I am only suggesting it"]
+    validations: { required: true }
+  - type: markdown
+    attributes:
+      value: See [Writing a CCP server](https://github.com/hacimertgokhan/ccp/blob/main/docs/writing-a-server.md).
