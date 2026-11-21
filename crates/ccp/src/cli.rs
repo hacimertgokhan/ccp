@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
+    version,
     name = "ccp",
     about = "CCP, the Core Context Protocol: demo server and byte-size comparison"
 )]
