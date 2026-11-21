@@ -9,4 +9,4 @@ description = "CCP server for CSV/TSV files: filter, order, group and aggregate 
 ccp-proto = { path = "../../crates/ccp-proto" }
 ccp-sql = { path = "../../crates/ccp-sql" }
 sqlite-ccp = { path = "../sqlite-ccp" }
-rusqlite = { version = "0.37.0", features = ["bundled"] }
+rusqlite = { version = "0.43.0", features = ["bundled"] }

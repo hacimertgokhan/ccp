@@ -8,7 +8,7 @@ description = "CCP server for SQLite files (read-only, schema-introspecting, rel
 [dependencies]
 ccp-proto = { path = "../../crates/ccp-proto" }
 ccp-sql = { path = "../../crates/ccp-sql" }
-rusqlite = { version = "0.37.0", features = ["bundled"] }
+rusqlite = { version = "0.43.0", features = ["bundled"] }
 
 [lib]
 name = "sqlite_ccp"
