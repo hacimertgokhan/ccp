@@ -43,3 +43,29 @@ jobs:
             | CCP_PATH=/tmp/smoke.db ./target/release/sqlite-ccp)
           echo "$out"
           echo "$out" | grep -F 't:[{name:\"ok\"}]'
+
+  servers:
+    name: end-to-end (redis, csv, http)
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p redis-ccp -p csv-ccp
+      - name: redis-ccp
+        run: |
+          sudo apt-get install -y redis-tools >/dev/null
+          redis-cli hset user:1 name Mert email m@x.com >/dev/null
+          out=$(printf '%s\n' 'hashes(match:"user:*"){_key name}' | ./target/release/redis-ccp --ccp)
+          echo "$out"; echo "$out" | grep -F '{hashes:[{_key:"user:1",name:"Mert"}]}'
+      - name: csv-ccp
+        run: |
+          printf 'region,total\nEU,10\nEU,5\nUS,7\n' > /tmp/s.csv
+          out=$(printf '%s\n' 's(group:"region",order:"-sum_total"){region sum_total}' | CCP_PATH=/tmp/s.csv ./target/release/csv-ccp --ccp)
+          echo "$out"; echo "$out" | grep -F '{s:[{region:"EU",sum_total:15},{region:"US",sum_total:7}]}'

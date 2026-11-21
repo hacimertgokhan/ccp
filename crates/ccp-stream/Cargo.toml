@@ -1,0 +1,16 @@
+[package]
+name = "ccp-stream"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared core for CCP event-stream servers: background reader, ring buffer, message/summary/status roots"
+
+[dependencies]
+ccp-proto = { path = "../ccp-proto" }
+ccp-mcp = { path = "../ccp-mcp" }
+serde_json = "1.0.154"
+tungstenite = { version = "0.30", optional = true, default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
+
+[features]
+default = []
+ws = ["dep:tungstenite"]

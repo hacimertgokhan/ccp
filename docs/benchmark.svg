@@ -1,56 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 616" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13">
-<rect width="880" height="616" fill="#ffffff"/>
-<text x="20" y="28" font-size="17" font-weight="600" fill="#111827">Bytes on the wire per task (log scale, lower is better)</text>
-<rect x="20" y="40" width="12" height="12" rx="2" fill="#2563eb"/><text x="38" y="51" fill="#374151">CCP</text>
-<rect x="170" y="40" width="12" height="12" rx="2" fill="#9ca3af"/><text x="188" y="51" fill="#374151">SQL-MCP, careful</text>
-<rect x="320" y="40" width="12" height="12" rx="2" fill="#d1d5db"/><text x="338" y="51" fill="#374151">SQL-MCP, naive</text>
-<text x="20" y="90" fill="#111827">Point lookup: one user, 2 fields</text>
-<rect x="270" y="70" width="210.5" height="16" rx="2" fill="#2563eb"/>
-<text x="486.5" y="83" fill="#374151">270 B</text>
-<rect x="270" y="88" width="212.2" height="16" rx="2" fill="#9ca3af"/>
-<text x="488.2" y="101" fill="#374151">283 B</text>
-<rect x="270" y="106" width="231.4" height="16" rx="2" fill="#d1d5db"/>
-<text x="507.4" y="119" fill="#374151">471 B</text>
-<text x="20" y="168" fill="#111827">List 100 users, 2 fields</text>
-<rect x="270" y="148" width="295.7" height="16" rx="2" fill="#2563eb"/>
-<text x="571.7" y="161" fill="#374151">2,608 B</text>
-<rect x="270" y="166" width="305.8" height="16" rx="2" fill="#9ca3af"/>
-<text x="581.8" y="179" fill="#374151">3,405 B</text>
-<rect x="270" y="184" width="381.1" height="16" rx="2" fill="#d1d5db"/>
-<text x="657.1" y="197" fill="#374151">25,259 B</text>
-<text x="20" y="246" fill="#111827">List 1000 posts, id+title (big body column)</text>
-<rect x="270" y="226" width="406.7" height="16" rx="2" fill="#2563eb"/>
-<text x="682.7" y="239" fill="#374151">49,947 B</text>
-<rect x="270" y="244" width="412.3" height="16" rx="2" fill="#9ca3af"/>
-<text x="688.3" y="257" fill="#374151">57,944 B</text>
-<rect x="270" y="262" width="490.0" height="16" rx="2" fill="#d1d5db"/>
-<text x="766.0" y="275" fill="#374151">457,635 B</text>
-<text x="20" y="324" fill="#111827">Filter: one author's post titles</text>
-<rect x="270" y="304" width="214.9" height="16" rx="2" fill="#2563eb"/>
-<text x="490.9" y="317" fill="#374151">304 B</text>
-<rect x="270" y="322" width="216.4" height="16" rx="2" fill="#9ca3af"/>
-<text x="492.4" y="335" fill="#374151">316 B</text>
-<rect x="270" y="340" width="262.9" height="16" rx="2" fill="#d1d5db"/>
-<text x="538.9" y="353" fill="#374151">1,088 B</text>
-<text x="20" y="402" fill="#111827">Nested: user -> posts -> comments</text>
-<rect x="270" y="382" width="236.5" height="16" rx="2" fill="#2563eb"/>
-<text x="512.5" y="395" fill="#374151">539 B</text>
-<rect x="270" y="400" width="246.2" height="16" rx="2" fill="#9ca3af"/>
-<text x="522.2" y="413" fill="#374151">699 B</text>
-<rect x="270" y="418" width="287.0" height="16" rx="2" fill="#d1d5db"/>
-<text x="563.0" y="431" fill="#374151">2,067 B</text>
-<text x="20" y="480" fill="#111827">Reverse relation</text>
-<rect x="270" y="460" width="308.5" height="16" rx="2" fill="#2563eb"/>
-<text x="584.5" y="473" fill="#374151">3,660 B</text>
-<rect x="270" y="478" width="308.4" height="16" rx="2" fill="#9ca3af"/>
-<text x="584.4" y="491" fill="#374151">3,654 B</text>
-<rect x="270" y="496" width="394.1" height="16" rx="2" fill="#d1d5db"/>
-<text x="670.1" y="509" fill="#374151">35,668 B</text>
-<text x="20" y="558" fill="#111827">Three independent lookups</text>
-<rect x="270" y="538" width="263.6" height="16" rx="2" fill="#2563eb"/>
-<text x="539.6" y="551" fill="#374151">1,109 B</text>
-<rect x="270" y="556" width="276.7" height="16" rx="2" fill="#9ca3af"/>
-<text x="552.7" y="569" fill="#374151">1,571 B</text>
-<rect x="270" y="574" width="296.2" height="16" rx="2" fill="#d1d5db"/>
-<text x="572.2" y="587" fill="#374151">2,640 B</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 857" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12.5">
+<rect width="900" height="857" fill="#ffffff"/>
+<text x="20" y="28" font-size="17" font-weight="600" fill="#111827">Bytes the model has to read per task (log scale, lower is better)</text>
+<rect x="20" y="42" width="12" height="12" rx="2" fill="#2563eb"/><text x="38" y="52" fill="#374151">CCP</text>
+<rect x="110" y="42" width="12" height="12" rx="2" fill="#9ca3af"/><text x="128" y="52" fill="#374151">conventional tool, careful</text>
+<rect x="340" y="42" width="12" height="12" rx="2" fill="#d1d5db"/><text x="358" y="52" fill="#374151">conventional tool, naive / raw</text>
+<text x="20" y="90" fill="#111827">List 100 users, 2 fields</text>
+<text x="20" y="104" fill="#6b7280" font-size="11">SQL</text>
+<rect x="330" y="72" width="205.8" height="15" rx="2" fill="#2563eb"/>
+<text x="541.8" y="84" fill="#374151">2,608 B</text>
+<rect x="330" y="89" width="212.8" height="15" rx="2" fill="#9ca3af"/>
+<text x="548.8" y="101" fill="#374151">3,405 B</text>
+<rect x="330" y="106" width="265.2" height="15" rx="2" fill="#d1d5db"/>
+<text x="601.2" y="118" fill="#374151">24.7 KB</text>
+<text x="20" y="161" fill="#111827">Nested: user -> posts -> comments</text>
+<text x="20" y="175" fill="#6b7280" font-size="11">SQL</text>
+<rect x="330" y="143" width="164.6" height="15" rx="2" fill="#2563eb"/>
+<text x="500.6" y="155" fill="#374151">539 B</text>
+<rect x="330" y="160" width="171.4" height="15" rx="2" fill="#9ca3af"/>
+<text x="507.4" y="172" fill="#374151">699 B</text>
+<rect x="330" y="177" width="199.7" height="15" rx="2" fill="#d1d5db"/>
+<text x="535.7" y="189" fill="#374151">2,067 B</text>
+<text x="20" y="232" fill="#111827">Three independent lookups</text>
+<text x="20" y="246" fill="#6b7280" font-size="11">SQL</text>
+<rect x="330" y="214" width="183.4" height="15" rx="2" fill="#2563eb"/>
+<text x="519.4" y="226" fill="#374151">1,109 B</text>
+<rect x="330" y="231" width="192.6" height="15" rx="2" fill="#9ca3af"/>
+<text x="528.6" y="243" fill="#374151">1,571 B</text>
+<rect x="330" y="248" width="206.1" height="15" rx="2" fill="#d1d5db"/>
+<text x="542.1" y="260" fill="#374151">2,640 B</text>
+<text x="20" y="303" fill="#111827">Report: revenue by status (5,000 orders)</text>
+<text x="20" y="317" fill="#6b7280" font-size="11">SQL</text>
+<rect x="330" y="285" width="166.8" height="15" rx="2" fill="#2563eb"/>
+<text x="502.8" y="297" fill="#374151">587 B</text>
+<rect x="330" y="302" width="171.0" height="15" rx="2" fill="#9ca3af"/>
+<text x="507.0" y="314" fill="#374151">689 B</text>
+<rect x="330" y="319" width="342.2" height="15" rx="2" fill="#d1d5db"/>
+<text x="678.2" y="331" fill="#374151">467.2 KB</text>
+<text x="20" y="374" fill="#111827">50 user hashes, name+email</text>
+<text x="20" y="388" fill="#6b7280" font-size="11">Redis</text>
+<rect x="330" y="356" width="214.6" height="15" rx="2" fill="#2563eb"/>
+<text x="550.6" y="368" fill="#374151">3,642 B</text>
+<rect x="330" y="373" width="249.3" height="15" rx="2" fill="#9ca3af"/>
+<text x="585.3" y="385" fill="#374151">13.4 KB</text>
+<rect x="330" y="390" width="269.5" height="15" rx="2" fill="#d1d5db"/>
+<text x="605.5" y="402" fill="#374151">29.0 KB</text>
+<text x="20" y="445" fill="#111827">Memory stats (3 numbers)</text>
+<text x="20" y="459" fill="#6b7280" font-size="11">Redis</text>
+<rect x="330" y="427" width="150.8" height="15" rx="2" fill="#2563eb"/>
+<text x="486.8" y="439" fill="#374151">319 B</text>
+<rect x="330" y="444" width="197.2" height="15" rx="2" fill="#9ca3af"/>
+<text x="533.2" y="456" fill="#374151">1,873 B</text>
+<text x="20" y="516" fill="#111827">Report a 3s window</text>
+<text x="20" y="530" fill="#6b7280" font-size="11">WebSocket</text>
+<rect x="330" y="498" width="160.2" height="15" rx="2" fill="#2563eb"/>
+<text x="496.2" y="510" fill="#374151">457 B</text>
+<rect x="330" y="515" width="315.1" height="15" rx="2" fill="#9ca3af"/>
+<text x="651.1" y="527" fill="#374151">165.8 KB</text>
+<text x="20" y="587" fill="#111827">Report a 3s window</text>
+<text x="20" y="601" fill="#6b7280" font-size="11">Socket.IO</text>
+<rect x="330" y="569" width="161.1" height="15" rx="2" fill="#2563eb"/>
+<text x="497.1" y="581" fill="#374151">472 B</text>
+<rect x="330" y="586" width="310.8" height="15" rx="2" fill="#9ca3af"/>
+<text x="646.8" y="598" fill="#374151">141.0 KB</text>
+<text x="20" y="658" fill="#111827">Revenue + orders by region (200,000 rows)</text>
+<text x="20" y="672" fill="#6b7280" font-size="11">CSV</text>
+<rect x="330" y="640" width="167.3" height="15" rx="2" fill="#2563eb"/>
+<text x="503.3" y="652" fill="#374151">598 B</text>
+<rect x="330" y="657" width="430.0" height="15" rx="2" fill="#9ca3af"/>
+<text x="766.0" y="669" fill="#374151">13.1 MB</text>
+<text x="20" y="729" fill="#111827">List of 100 users: id + name</text>
+<text x="20" y="743" fill="#6b7280" font-size="11">HTTP</text>
+<rect x="330" y="711" width="206.8" height="15" rx="2" fill="#2563eb"/>
+<text x="542.8" y="723" fill="#374151">2,710 B</text>
+<rect x="330" y="728" width="310.8" height="15" rx="2" fill="#9ca3af"/>
+<text x="646.8" y="740" fill="#374151">140.9 KB</text>
+<text x="20" y="800" fill="#111827">One user: name, email, city</text>
+<text x="20" y="814" fill="#6b7280" font-size="11">HTTP</text>
+<rect x="330" y="782" width="150.3" height="15" rx="2" fill="#2563eb"/>
+<text x="486.3" y="794" fill="#374151">312 B</text>
+<rect x="330" y="799" width="193.7" height="15" rx="2" fill="#9ca3af"/>
+<text x="529.7" y="811" fill="#374151">1,640 B</text>
 </svg>

@@ -1,0 +1,10 @@
+[package]
+name = "ccp-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Runtime for CCP servers: MCP front end, raw CCP mode and a JSON field projector"
+
+[dependencies]
+ccp-proto = { path = "../ccp-proto" }
+serde_json = "1.0.154"

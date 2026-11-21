@@ -30,7 +30,7 @@ jobs:
         run: |
           dir="ccp-${{ github.ref_name }}-${{ matrix.target }}"
           mkdir "$dir"
-          for b in ccp mysql-ccp postgres-ccp sqlite-ccp; do
+          for b in ccp mysql-ccp postgres-ccp sqlite-ccp csv-ccp redis-ccp websocket-ccp socketio-ccp http-ccp; do
             cp "target/${{ matrix.target }}/release/${b}${{ matrix.ext }}" "$dir/"
           done
           cp README.md LICENSE "$dir/"

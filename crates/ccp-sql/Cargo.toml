@@ -7,4 +7,4 @@ description = "Shared engine for CCP database servers: introspection, relations,
 
 [dependencies]
 ccp-proto = { path = "../ccp-proto" }
-serde_json = "1.0.154"
+ccp-mcp = { path = "../ccp-mcp" }

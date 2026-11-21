@@ -2,10 +2,10 @@
 //! Env: CCP_HOST, CCP_PORT (5432), CCP_USER, CCP_PASSWORD, CCP_DBNAME.
 
 use ccp_proto::value::Value;
-use ccp_sql::catalog::{is_bool_type, is_int_type};
+use ccp_sql::catalog::{is_bool_type, is_float_type, is_int_type};
 use ccp_sql::{
-    Backend, Catalog, Column, DbValue, Dialect, ForeignKey, Select, Table, build_sql, env_required,
-    scrub,
+    Agg, AggFunc, Backend, Catalog, Column, DbValue, Dialect, ForeignKey, OutKind, Select, Table,
+    build_sql, env_required, scrub,
 };
 use postgres::types::ToSql;
 use postgres::{Client, NoTls};
@@ -20,10 +20,29 @@ impl Dialect for PgDialect {
         let q = self.quote(&col.name);
         if is_int_type(&col.data_type) {
             format!("{}::int8", q)
+        } else if is_float_type(&col.data_type) {
+            format!("{}::float8", q)
         } else if is_bool_type(&col.data_type) {
             q
         } else {
             format!("{}::text", q)
+        }
+    }
+    fn agg_expr(&self, agg: &Agg, col: Option<&Column>, kind: OutKind) -> String {
+        let q = col.map(|c| self.quote(&c.name)).unwrap_or_default();
+        let cast = match kind {
+            OutKind::Int => "int8",
+            OutKind::Float => "float8",
+            OutKind::Bool => "bool",
+            OutKind::Str => "text",
+        };
+        match agg.func {
+            AggFunc::Count => "COUNT(*)::int8".to_string(),
+            AggFunc::CountDistinct => format!("COUNT(DISTINCT {})::int8", q),
+            AggFunc::Sum => format!("SUM({})::{}", q, cast),
+            AggFunc::Avg => format!("AVG({})::float8", q),
+            AggFunc::Min => format!("MIN({})::{}", q, cast),
+            AggFunc::Max => format!("MAX({})::{}", q, cast),
         }
     }
     fn filter_lhs(&self, col: &Column) -> String {
@@ -152,8 +171,9 @@ impl Backend for Pg {
     }
 
     fn select(&self, q: &Select) -> Result<Vec<Vec<Value>>, String> {
-        let (sql, params) = build_sql(&PgDialect, q)?;
-        let boxed: Vec<Box<dyn ToSql + Sync>> = params
+        let built = build_sql(&PgDialect, q)?;
+        let boxed: Vec<Box<dyn ToSql + Sync>> = built
+            .params
             .into_iter()
             .map(|p| match p {
                 DbValue::Int(i) => Box::new(i) as Box<dyn ToSql + Sync>,
@@ -164,23 +184,17 @@ impl Backend for Pg {
         let rows = self
             .client
             .borrow_mut()
-            .query(sql.as_str(), &refs)
+            .query(built.sql.as_str(), &refs)
             .map_err(|e| self.err(e))?;
-        let kinds: Vec<&Column> = q
-            .columns
-            .iter()
-            .filter_map(|n| q.table.columns.iter().find(|c| &c.name == n))
-            .collect();
         let mut out = Vec::with_capacity(rows.len());
         for row in rows {
-            let mut vals = Vec::with_capacity(kinds.len());
-            for (i, col) in kinds.iter().enumerate() {
-                let v = if is_int_type(&col.data_type) {
-                    row.get::<_, Option<i64>>(i).map(Value::Int)
-                } else if is_bool_type(&col.data_type) {
-                    row.get::<_, Option<bool>>(i).map(Value::Bool)
-                } else {
-                    row.get::<_, Option<String>>(i).map(Value::Str)
+            let mut vals = Vec::with_capacity(built.kinds.len());
+            for (i, kind) in built.kinds.iter().enumerate() {
+                let v = match kind {
+                    OutKind::Int => row.get::<_, Option<i64>>(i).map(Value::Int),
+                    OutKind::Float => row.get::<_, Option<f64>>(i).map(Value::Float),
+                    OutKind::Bool => row.get::<_, Option<bool>>(i).map(Value::Bool),
+                    OutKind::Str => row.get::<_, Option<String>>(i).map(Value::Str),
                 };
                 vals.push(v.unwrap_or(Value::Null));
             }

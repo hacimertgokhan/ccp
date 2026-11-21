@@ -36,6 +36,8 @@ fn to_value(v: &mysql::Value) -> Value {
         mysql::Value::UInt(u) => i64::try_from(*u)
             .map(Value::Int)
             .unwrap_or_else(|_| Value::Str(u.to_string())),
+        mysql::Value::Float(f) => Value::Float(*f as f64),
+        mysql::Value::Double(f) => Value::Float(*f),
         mysql::Value::Bytes(b) => Value::Str(String::from_utf8_lossy(b).into_owned()),
         other => Value::Str(other.as_sql(true).trim_matches('\'').to_string()),
     }
@@ -114,8 +116,9 @@ impl Backend for Mysql {
     }
 
     fn select(&self, q: &Select) -> Result<Vec<Vec<Value>>, String> {
-        let (sql, params) = build_sql(&MysqlDialect, q)?;
-        let params: Vec<mysql::Value> = params
+        let built = build_sql(&MysqlDialect, q)?;
+        let params: Vec<mysql::Value> = built
+            .params
             .into_iter()
             .map(|p| match p {
                 DbValue::Int(i) => mysql::Value::Int(i),
@@ -125,7 +128,7 @@ impl Backend for Mysql {
         let rows: Vec<mysql::Row> = self
             .conn
             .borrow_mut()
-            .exec(sql, params)
+            .exec(built.sql, params)
             .map_err(|e| self.err(e))?;
         Ok(rows
             .into_iter()

@@ -1,0 +1,12 @@
+[package]
+name = "csv-ccp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CCP server for CSV/TSV files: filter, order, group and aggregate without loading rows into the model"
+
+[dependencies]
+ccp-proto = { path = "../../crates/ccp-proto" }
+ccp-sql = { path = "../../crates/ccp-sql" }
+sqlite-ccp = { path = "../sqlite-ccp" }
+rusqlite = { version = "0.37.0", features = ["bundled"] }

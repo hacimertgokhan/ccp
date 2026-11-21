@@ -78,9 +78,23 @@ pub fn is_bool_type(t: &str) -> bool {
     matches!(t, "boolean" | "bool")
 }
 
+pub fn is_float_type(t: &str) -> bool {
+    matches!(
+        t,
+        "float" | "double" | "real" | "float4" | "float8" | "double precision"
+    )
+}
+
+/// Exact decimals stay strings in plain selects (no precision loss) but can be aggregated.
+pub fn is_decimal_type(t: &str) -> bool {
+    matches!(t, "decimal" | "numeric" | "dec" | "money")
+}
+
 pub fn ccp_type(t: &str) -> &'static str {
     if is_int_type(t) {
         "Int"
+    } else if is_float_type(t) {
+        "Float"
     } else if is_bool_type(t) {
         "Bool"
     } else {
@@ -160,13 +174,10 @@ impl Catalog {
     pub fn schema_text(&self) -> String {
         let mut out = String::from("root _tables:[_Table]\n");
         for t in &self.tables {
-            let args: Vec<String> = ["limit:Int".to_string(), "offset:Int".to_string()]
-                .into_iter()
-                .chain(
-                    t.columns
-                        .iter()
-                        .map(|c| format!("{}:{}", c.name, ccp_type(&c.data_type))),
-                )
+            let args: Vec<String> = t
+                .columns
+                .iter()
+                .map(|c| format!("{}:{}", c.name, ccp_type(&c.data_type)))
                 .collect();
             out.push_str(&format!(
                 "root {}({}):[{}]\n",
@@ -175,8 +186,9 @@ impl Catalog {
                 type_name(&t.name)
             ));
         }
+        // Said once, not per table: every table root takes these.
         out.push_str(
-            "type _Table{name:Str,columns:[_Column]}\ntype _Column{name:Str,type:Str,native:Str}",
+            "all table roots also take limit:Int,offset:Int,order:\"-f,g\",group:\"cols\"; with group the braces take count,sum_C,avg_C,min_C,max_C,distinct_C\ntype _Table{name:Str,columns:[_Column]}\ntype _Column{name:Str,type:Str,native:Str}",
         );
         for t in &self.tables {
             let mut fields: Vec<String> = t

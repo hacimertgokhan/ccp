@@ -1,0 +1,15 @@
+[package]
+name = "socketio-ccp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CCP server for Socket.IO (Engine.IO v4 over WebSocket): listen to events, query only what you need"
+
+[dependencies]
+ccp-mcp = { path = "../../crates/ccp-mcp" }
+ccp-stream = { path = "../../crates/ccp-stream", features = ["ws"] }
+serde_json = "1.0.154"
+
+[dev-dependencies]
+ccp-proto = { path = "../../crates/ccp-proto" }
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }

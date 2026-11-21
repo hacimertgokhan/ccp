@@ -1,18 +1,18 @@
 name: New server proposal
-description: Propose a CCP server for another database or data source
+description: Propose a CCP server for another data source (database, cache, queue, feed, API, files, reports…)
 labels: [new-server]
 body:
   - type: input
     id: source
     attributes:
       label: Data source
-      placeholder: Redis, MongoDB, a REST API …
+      placeholder: MongoDB, Kafka, MQTT, a log file, a gRPC service …
     validations: { required: true }
   - type: textarea
     id: shape
     attributes:
       label: How would it map onto CCP?
-      description: What are the roots, the fields, and (if any) the relations?
+      description: What are the roots, the fields, and (if any) the relations? What would the conventional tool return that a model does not need?
     validations: { required: true }
   - type: dropdown
     id: contribute

@@ -1,5 +1,5 @@
 use crate::catalog::{Catalog, Rel, Table};
-use crate::sqlgen::{DbValue, Filter, Select};
+use crate::sqlgen::{Agg, AggFunc, DbValue, Filter, Order, OutKind, Select};
 use ccp_proto::engine::{Args, FieldResult, Resolvable, RootResolver};
 use ccp_proto::query::{ArgValue, Selection};
 use ccp_proto::value::Value;
@@ -17,7 +17,7 @@ pub trait Backend {
     fn kind(&self) -> &'static str;
     fn version(&self) -> String;
     fn introspect(&self) -> Result<Catalog, String>;
-    /// Rows come back aligned with `q.columns` (after unknown ones are dropped).
+    /// Rows come back aligned with the output columns of the built statement.
     fn select(&self, q: &Select) -> Result<Vec<Vec<Value>>, String>;
 }
 
@@ -72,6 +72,81 @@ fn to_db(v: &Value) -> Option<DbValue> {
     }
 }
 
+/// Make driver output match the declared kind (e.g. decimals arrive as text).
+fn normalize(kind: OutKind, v: Value) -> Value {
+    match (kind, v) {
+        (OutKind::Float, Value::Str(s)) => s
+            .trim()
+            .parse::<f64>()
+            .map(Value::Float)
+            .unwrap_or(Value::Str(s)),
+        (OutKind::Float, Value::Int(i)) => Value::Float(i as f64),
+        (OutKind::Int, Value::Str(s)) => s
+            .trim()
+            .parse::<i64>()
+            .map(Value::Int)
+            .unwrap_or(Value::Str(s)),
+        (OutKind::Bool, Value::Int(i)) => Value::Bool(i != 0),
+        (_, v) => v,
+    }
+}
+
+struct FetchReq<'a> {
+    table: &'a Table,
+    filters: &'a [Filter],
+    order: &'a [Order],
+    limit: i64,
+    offset: i64,
+    sub: &'a [Selection],
+    extra: &'a [String],
+}
+
+fn parse_order(s: &str) -> Vec<Order> {
+    s.split(',')
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .map(|p| match p.strip_prefix('-') {
+            Some(f) => Order {
+                field: f.to_string(),
+                desc: true,
+            },
+            None => Order {
+                field: p.trim_start_matches('+').to_string(),
+                desc: false,
+            },
+        })
+        .collect()
+}
+
+/// `count`, `sum_total`, `avg_total`, `min_x`, `max_x`, `distinct_x`.
+fn parse_agg(name: &str, table: &Table) -> Option<Agg> {
+    if name == "count" {
+        return Some(Agg {
+            alias: name.into(),
+            func: AggFunc::Count,
+            column: None,
+        });
+    }
+    for (prefix, func) in [
+        ("sum_", AggFunc::Sum),
+        ("avg_", AggFunc::Avg),
+        ("min_", AggFunc::Min),
+        ("max_", AggFunc::Max),
+        ("distinct_", AggFunc::CountDistinct),
+    ] {
+        if let Some(col) = name.strip_prefix(prefix)
+            && table.columns.iter().any(|c| c.name == col)
+        {
+            return Some(Agg {
+                alias: name.into(),
+                func,
+                column: Some(col.into()),
+            });
+        }
+    }
+    None
+}
+
 impl Executor {
     pub fn new(backend: Box<dyn Backend>) -> Result<Executor, String> {
         let catalog = backend.introspect()?.sanitize();
@@ -91,31 +166,113 @@ impl Executor {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn fetch(
-        &self,
-        table: &Table,
-        filters: &[Filter],
-        limit: i64,
-        offset: i64,
-        sub: &[Selection],
-        extra: &[String],
-        depth: usize,
-    ) -> Result<Fetched, String> {
+    fn run(&self, q: &Select) -> Result<Vec<Vec<Value>>, String> {
+        let kinds = crate::sqlgen::build_sql(&NullDialect, q)?.kinds;
+        let rows = self.backend.select(q)?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                r.into_iter()
+                    .enumerate()
+                    .map(|(i, v)| kinds.get(i).map_or(v.clone(), |k| normalize(*k, v)))
+                    .collect()
+            })
+            .collect())
+    }
+
+    /// Group mode: `table(group:"a,b",order:"-sum_x"){a b count sum_x}`.
+    fn aggregate(&self, req: &FetchReq, group: &str) -> Result<Vec<RowData>, String> {
+        let (table, filters, order, limit, offset, sub) = (
+            req.table,
+            req.filters,
+            req.order,
+            req.limit,
+            req.offset,
+            req.sub,
+        );
+        let group_cols: Vec<String> = group
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+        for g in &group_cols {
+            if !table.columns.iter().any(|c| &c.name == g) {
+                return Err(format!("unknown group column `{}`", g));
+            }
+        }
+        let mut aggs: Vec<Agg> = Vec::new();
+        let mut out_names: Vec<String> = Vec::new();
+        for s in sub {
+            if group_cols.contains(&s.name) {
+                out_names.push(s.name.clone());
+            } else if let Some(a) = parse_agg(&s.name, table) {
+                if !aggs.iter().any(|x| x.alias == a.alias) {
+                    aggs.push(a);
+                }
+                out_names.push(s.name.clone());
+            }
+        }
+        if aggs.is_empty() {
+            aggs.push(Agg {
+                alias: "count".into(),
+                func: AggFunc::Count,
+                column: None,
+            });
+            if !out_names.contains(&"count".to_string()) {
+                out_names.push("count".into());
+            }
+        }
+        let rows = self.run(&Select {
+            table,
+            columns: &group_cols,
+            filters,
+            order,
+            aggs: Some(&aggs),
+            limit,
+            offset,
+        })?;
+        let names: Vec<&String> = group_cols
+            .iter()
+            .chain(aggs.iter().map(|a| &a.alias))
+            .collect();
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let vals = out_names
+                    .iter()
+                    .filter_map(|n| {
+                        names
+                            .iter()
+                            .position(|x| *x == n)
+                            .map(|i| (n.clone(), r[i].clone()))
+                    })
+                    .collect();
+                RowData {
+                    vals,
+                    rels: Vec::new(),
+                }
+            })
+            .collect())
+    }
+
+    fn fetch(&self, req: &FetchReq, depth: usize) -> Result<Fetched, String> {
         if depth > MAX_DEPTH {
             return Err(format!(
                 "relation nesting exceeds max depth ({})",
                 MAX_DEPTH
             ));
         }
+        let table = req.table;
         let rels = self.catalog.relations(table);
         let mut out_cols: Vec<String> = Vec::new();
-        for s in sub {
+        for s in req.sub {
             if table.columns.iter().any(|c| c.name == s.name) && !out_cols.contains(&s.name) {
                 out_cols.push(s.name.clone());
             }
         }
-        let wants: Vec<(&Selection, &Rel)> = sub
+        let wants: Vec<(&Selection, &Rel)> = req
+            .sub
             .iter()
             .filter_map(|s| rels.iter().find(|r| r.name() == s.name).map(|r| (s, r)))
             .collect();
@@ -128,7 +285,7 @@ impl Executor {
                 cols.push(c.to_string());
             }
         };
-        for e in extra {
+        for e in req.extra {
             need(e);
         }
         for (_, r) in &wants {
@@ -137,12 +294,14 @@ impl Executor {
                 Rel::HasMany { parent_column, .. } => need(parent_column),
             }
         }
-        let raw = self.backend.select(&Select {
+        let raw = self.run(&Select {
             table,
             columns: &cols,
-            filters,
-            limit,
-            offset,
+            filters: req.filters,
+            order: req.order,
+            aggs: None,
+            limit: req.limit,
+            offset: req.offset,
         })?;
         let pos = |c: &str| cols.iter().position(|x| x == c).unwrap();
         let mut rows: Vec<(RowData, Vec<Value>)> = raw
@@ -200,12 +359,15 @@ impl Executor {
                 }
             } else {
                 self.fetch(
-                    child,
-                    &[filter],
-                    REL_LIMIT,
-                    0,
-                    &sel.sub,
-                    std::slice::from_ref(child_col),
+                    &FetchReq {
+                        table: child,
+                        filters: std::slice::from_ref(&filter),
+                        order: &[],
+                        limit: REL_LIMIT,
+                        offset: 0,
+                        sub: &sel.sub,
+                        extra: std::slice::from_ref(child_col),
+                    },
                     depth + 1,
                 )?
             };
@@ -239,6 +401,10 @@ impl Executor {
         Ok(Fetched { cols, rows })
     }
 }
+
+/// Only used to compute output kinds (`build_sql` needs a dialect); never executed.
+struct NullDialect;
+impl crate::sqlgen::Dialect for NullDialect {}
 
 struct TableMeta(Table);
 struct ColumnMeta(String, String);
@@ -313,7 +479,42 @@ impl RootResolver for Executor {
         };
         let limit = int_arg("limit", DEFAULT_LIMIT).clamp(0, MAX_LIMIT);
         let offset = int_arg("offset", 0).max(0);
-        match self.fetch(table, &filters, limit, offset, sub, &[], 0) {
+        let order = match args.get("order") {
+            Some(ArgValue::Str(s)) => parse_order(s),
+            _ => Vec::new(),
+        };
+
+        if let Some(ArgValue::Str(group)) = args.get("group") {
+            return match self.aggregate(
+                &FetchReq {
+                    table,
+                    filters: &filters,
+                    order: &order,
+                    limit,
+                    offset,
+                    sub,
+                    extra: &[],
+                },
+                group,
+            ) {
+                Ok(rows) => FieldResult::List(
+                    rows.into_iter()
+                        .map(|rd| Box::new(RowNode(rd)) as Box<dyn Resolvable>)
+                        .collect(),
+                ),
+                Err(e) => FieldResult::Error(e),
+            };
+        }
+        let req = FetchReq {
+            table,
+            filters: &filters,
+            order: &order,
+            limit,
+            offset,
+            sub,
+            extra: &[],
+        };
+        match self.fetch(&req, 0) {
             Ok(f) => FieldResult::List(
                 f.rows
                     .into_iter()

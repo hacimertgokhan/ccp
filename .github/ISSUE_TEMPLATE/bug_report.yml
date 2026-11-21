@@ -6,7 +6,7 @@ body:
     id: server
     attributes:
       label: Server
-      options: [mysql-ccp, postgres-ccp, sqlite-ccp, ccp (demo), ccp-proto / protocol, other]
+      options: [mysql-ccp, postgres-ccp, sqlite-ccp, csv-ccp, redis-ccp, websocket-ccp, socketio-ccp, http-ccp, ccp (demo), protocol / shared crates, other]
     validations: { required: true }
   - type: input
     id: version
@@ -17,8 +17,8 @@ body:
   - type: input
     id: database
     attributes:
-      label: Database and version
-      placeholder: PostgreSQL 16.4, MariaDB 11, SQLite 3.46 …
+      label: Data source and version
+      placeholder: PostgreSQL 16.4, Redis 7.4, a Socket.IO 4 server, an API … 
   - type: textarea
     id: query
     attributes:

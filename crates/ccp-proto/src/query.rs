@@ -63,19 +63,27 @@ fn tokenize(input: &str) -> Vec<Tok> {
                 chars.next();
                 let mut s = String::new();
                 while let Some(&c2) = chars.peek() {
-                    if c2 == '"' {
-                        chars.next();
-                        break;
-                    }
-                    s.push(c2);
                     chars.next();
+                    match c2 {
+                        '"' => break,
+                        '\\' => match chars.next() {
+                            Some('n') => s.push('\n'),
+                            Some('t') => s.push('\t'),
+                            Some(other) => s.push(other), // \" and \\ (and any other char) stay literal
+                            None => break,
+                        },
+                        other => s.push(other),
+                    }
                 }
                 toks.push(Tok::StrLit(s));
             }
-            c if c.is_ascii_digit() => {
+            c if c.is_ascii_digit() || c == '-' => {
                 let mut s = String::new();
                 s.push(c);
                 chars.next();
+                if c == '-' && !matches!(chars.peek(), Some(d) if d.is_ascii_digit()) {
+                    continue;
+                }
                 while let Some(&c2) = chars.peek() {
                     if c2.is_ascii_digit() {
                         s.push(c2);
@@ -91,7 +99,7 @@ fn tokenize(input: &str) -> Vec<Tok> {
                 s.push(c);
                 chars.next();
                 while let Some(&c2) = chars.peek() {
-                    if c2.is_alphanumeric() || c2 == '_' {
+                    if c2.is_alphanumeric() || c2 == '_' || c2 == '.' || c2 == '-' {
                         s.push(c2);
                         chars.next();
                     } else {
@@ -196,4 +204,32 @@ fn parse_selection(
     }
 
     Ok((Selection { name, args, sub }, pos))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn negative_ints_dotted_and_dashed_names() {
+        let q = parse_query("list(key:\"k\",start:0,stop:-1){a.b content-type}").unwrap();
+        assert!(matches!(q[0].args["stop"], ArgValue::Int(-1)));
+        let names: Vec<_> = q[0].sub.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, ["a.b", "content-type"]);
+    }
+
+    #[test]
+    fn string_escapes() {
+        let q = parse_query(r#"a(x:"he said \"hi\" \\ \n")"#).unwrap();
+        match &q[0].args["x"] {
+            ArgValue::Str(s) => assert_eq!(s, "he said \"hi\" \\ \n"),
+            other => panic!("{:?}", other),
+        }
+    }
+
+    #[test]
+    fn depth_is_capped() {
+        let deep = format!("{}x{}", "a{".repeat(100), "}".repeat(100));
+        assert!(parse_query(&deep).is_err());
+    }
 }

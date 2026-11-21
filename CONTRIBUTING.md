@@ -10,7 +10,7 @@ bytes and fewer calls?**
 |---|---|
 | Report a bug | [Open a bug report](https://github.com/hacimertgokhan/ccp/issues/new?template=bug_report.yml) with the query, the server and the output |
 | Suggest a feature | [Open a feature request](https://github.com/hacimertgokhan/ccp/issues/new?template=feature_request.yml): describe the question you could not ask |
-| Add a database or data source | Read [Writing a CCP server](docs/writing-a-server.md), then [propose it](https://github.com/hacimertgokhan/ccp/issues/new?template=new_server.yml) so we agree on scope first |
+| Add a database or any other data source (cache, queue, feed, API, files, reports…) | Read [Writing a CCP server](docs/writing-a-server.md), then [propose it](https://github.com/hacimertgokhan/ccp/issues/new?template=new_server.yml) so we agree on scope first |
 | Improve the protocol | Open a feature request first; protocol changes need an update to [docs/PROTOCOL.md](docs/PROTOCOL.md) |
 | Improve docs or benchmarks | Pull requests welcome, no issue needed |
 | Report a vulnerability | **Do not open an issue**: see [SECURITY.md](SECURITY.md) |
@@ -26,16 +26,18 @@ cargo test --workspace
 ```
 
 Requirements: a recent stable Rust toolchain. Docker is only needed for the
-benchmark (`python3 bench/bench.py`: MariaDB and PostgreSQL containers).
+benchmark (`python3 bench/run_all.py`: MariaDB, PostgreSQL and Redis containers).
 
 ## Layout
 
 | Path | What lives there |
 |---|---|
 | `crates/ccp-proto` | the protocol (parser, executor, encoding). Keep it dependency-free. |
-| `crates/ccp-sql` | shared engine for database servers |
+| `crates/ccp-mcp` | runtime every server uses: MCP front end, raw CCP mode, JSON projector |
+| `crates/ccp-sql` | shared engine for SQL servers: catalog, relations, reports, safe SQL |
+| `crates/ccp-stream` | shared core for event-stream servers: reader, ring buffer, roots |
 | `crates/ccp` | demo CLI |
-| `plugins/*-ccp` | one thin crate per database; all servers live here |
+| `plugins/*-ccp` | one thin crate per data source; **all servers live here** (mysql, postgres, sqlite, csv, redis, websocket, socketio, http) |
 | `docs/`, `bench/` | specification, guides, reproducible benchmark |
 
 ## Before you open a pull request
@@ -49,17 +51,21 @@ cargo test --workspace
 * One focused change per pull request; explain **why** in the description.
 * Add tests: unit tests for logic, an in-memory test like `plugins/sqlite-ccp` for query behaviour.
 * Update the docs and `CHANGELOG.md` (under *Unreleased*) when behaviour changes.
-* If your change touches results, run `python3 bench/bench.py`: the three databases must still
-  return identical output (the parity line), and byte counts should not regress.
+* If your change touches results or a server's speed, run `python3 bench/run_all.py`: the three SQL
+  databases must still return identical output (the parity line), and bytes/latency should not regress.
+* A new server should come with a benchmark scenario that shows what it saves against the
+  conventional tool for that source (see [bench/README.md](bench/README.md)).
 
 ## Rules that are not negotiable
 
 These keep CCP servers safe to point at real data:
 
-1. **Read-only.** No server may write.
-2. **No caller text in SQL.** Identifiers come from the catalog, values are bound parameters.
-3. **No secrets in output.** Scrub credentials from errors; never log them.
-4. **Environment-based configuration.** Passwords never go on a command line or into a file the project writes.
+1. **Read-only.** No server may change its source. Anything a model must not control (a subscribe message, an emitted event) is configured by the operator through environment variables.
+2. **Caller text is data, never syntax.** SQL: identifiers from the catalog, values bound. Redis: a fixed command set. HTTP: fixed base URL, validated path. No server builds a command, query or URL from raw model text.
+3. **Bounded.** Every root caps rows, bytes and time; list roots default to a small `limit`.
+4. **No secrets in output.** Scrub credentials from errors; never log them.
+5. **Environment-based configuration.** Passwords never go on a command line or into a file the project writes.
+6. **Selection is projection.** Fetch and return only the fields the query names.
 
 ## Commit style
 

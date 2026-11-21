@@ -1,128 +1,339 @@
 {
- "scenarios": [
+ "sql": null,
+ "redis": null,
+ "streams": null,
+ "csv": null,
+ "http": null,
+ "rows": [
   {
-   "id": "point",
+   "source": "SQL",
    "title": "Point lookup: one user, 2 fields",
    "ccp": 270,
-   "ccp_rt": 1,
+   "base": 283,
+   "ccp_calls": 1,
+   "base_calls": 1,
    "naive": 471,
-   "naive_rt": 1,
-   "careful": 283,
-   "careful_rt": 1,
-   "query": "users(id:42){name email}"
+   "naive_calls": 1,
+   "note": ""
   },
   {
-   "id": "list100",
+   "source": "SQL",
    "title": "List 100 users, 2 fields",
    "ccp": 2608,
-   "ccp_rt": 1,
+   "base": 3405,
+   "ccp_calls": 1,
+   "base_calls": 1,
    "naive": 25259,
-   "naive_rt": 1,
-   "careful": 3405,
-   "careful_rt": 1,
-   "query": "users(limit:100){id name}"
+   "naive_calls": 1,
+   "note": ""
   },
   {
-   "id": "wide1000",
-   "title": "List 1000 posts, id+title (big body column)",
+   "source": "SQL",
+   "title": "List 1,000 posts, id+title (big body)",
    "ccp": 49947,
-   "ccp_rt": 1,
+   "base": 57944,
+   "ccp_calls": 1,
+   "base_calls": 1,
    "naive": 457635,
-   "naive_rt": 1,
-   "careful": 57944,
-   "careful_rt": 1,
-   "query": "posts(limit:1000){id title}"
+   "naive_calls": 1,
+   "note": ""
   },
   {
-   "id": "filter",
+   "source": "SQL",
    "title": "Filter: one author's post titles",
    "ccp": 304,
-   "ccp_rt": 1,
+   "base": 316,
+   "ccp_calls": 1,
+   "base_calls": 1,
    "naive": 1088,
-   "naive_rt": 1,
-   "careful": 316,
-   "careful_rt": 1,
-   "query": "posts(author_id:7){title}"
+   "naive_calls": 1,
+   "note": ""
   },
   {
-   "id": "nested2",
+   "source": "SQL",
    "title": "Nested: user -> posts -> comments",
    "ccp": 539,
-   "ccp_rt": 1,
+   "base": 699,
+   "ccp_calls": 1,
+   "base_calls": 1,
    "naive": 2067,
-   "naive_rt": 3,
-   "careful": 699,
-   "careful_rt": 1,
-   "query": "users(id:7){name posts{title comments{body}}}"
+   "naive_calls": 3,
+   "note": ""
   },
   {
-   "id": "belongs",
-   "title": "Reverse relation: 50 posts with author name",
+   "source": "SQL",
+   "title": "Reverse relation: 50 posts + author name",
    "ccp": 3660,
-   "ccp_rt": 1,
+   "base": 3654,
+   "ccp_calls": 1,
+   "base_calls": 1,
    "naive": 35668,
-   "naive_rt": 2,
-   "careful": 3654,
-   "careful_rt": 1,
-   "query": "posts(limit:50){title author{name}}"
+   "naive_calls": 2,
+   "note": ""
   },
   {
-   "id": "batch3",
+   "source": "SQL",
    "title": "Three independent lookups",
    "ccp": 1109,
-   "ccp_rt": 1,
+   "base": 1571,
+   "ccp_calls": 1,
+   "base_calls": 3,
    "naive": 2640,
-   "naive_rt": 3,
-   "careful": 1571,
-   "careful_rt": 3,
-   "query": "users(id:7){name email} posts(author_id:7){id title} comments(post_id:7){author_name body}"
-  }
- ],
- "scaling": [
-  {
-   "rows": 10,
-   "ccp": 447,
-   "naive": 2676,
-   "careful": 522
+   "naive_calls": 3,
+   "note": ""
   },
   {
-   "rows": 100,
-   "ccp": 2610,
-   "naive": 25259,
-   "careful": 3405
+   "source": "SQL",
+   "title": "Report: revenue by status (5,000 orders)",
+   "ccp": 587,
+   "base": 689,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": 478432,
+   "naive_calls": 1,
+   "note": ""
   },
   {
-   "rows": 1000,
-   "ccp": 26013,
-   "naive": 253480,
-   "careful": 34008
+   "source": "SQL",
+   "title": "Report: top 10 users by spend",
+   "ccp": 667,
+   "base": 816,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": 231887,
+   "naive_calls": 1,
+   "note": ""
+  },
+  {
+   "source": "SQL",
+   "title": "Report: channel x status matrix",
+   "ccp": 1008,
+   "base": 1220,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": 478432,
+   "naive_calls": 1,
+   "note": ""
+  },
+  {
+   "source": "Redis",
+   "title": "50 user hashes, name+email",
+   "ccp": 3642,
+   "base": 13741,
+   "ccp_calls": 1,
+   "base_calls": 51,
+   "naive": 29712,
+   "naive_calls": 51,
+   "note": ""
+  },
+  {
+   "source": "Redis",
+   "title": "One hash, 2 fields",
+   "ccp": 262,
+   "base": 239,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": 573,
+   "naive_calls": 1,
+   "note": ""
+  },
+  {
+   "source": "Redis",
+   "title": "100 keys with type + TTL",
+   "ccp": 4937,
+   "base": 42225,
+   "ccp_calls": 1,
+   "base_calls": 201,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "Redis",
+   "title": "Memory stats (3 numbers)",
+   "ccp": 319,
+   "base": 1873,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "Redis",
+   "title": "Top-10 leaderboard",
+   "ccp": 616,
+   "base": 482,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "WebSocket",
+   "title": "Report a 3s window (600 events): count + per-symbol",
+   "ccp": 457,
+   "base": 169744,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": "~600 msgs/3s"
+  },
+  {
+   "source": "WebSocket",
+   "title": "Price min/max/avg over 3s",
+   "ccp": 303,
+   "base": 169744,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "WebSocket",
+   "title": "Last 5 trades, symbol + price",
+   "ccp": 353,
+   "base": 1585,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "Socket.IO",
+   "title": "Report a 3s window (600 events): count + per-symbol",
+   "ccp": 472,
+   "base": 144345,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": "~600 msgs/3s"
+  },
+  {
+   "source": "Socket.IO",
+   "title": "Price min/max/avg over 3s",
+   "ccp": 321,
+   "base": 144345,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "Socket.IO",
+   "title": "Last 5 trades, symbol + price",
+   "ccp": 368,
+   "base": 1644,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "CSV",
+   "title": "Revenue + orders by region (200,000 rows)",
+   "ccp": 598,
+   "base": 13725686,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": "file 13.1 MB"
+  },
+  {
+   "source": "CSV",
+   "title": "Top 5 products by quantity (200,000 rows)",
+   "ccp": 498,
+   "base": 13725686,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": "file 13.1 MB"
+  },
+  {
+   "source": "CSV",
+   "title": "Region x channel matrix (200,000 rows)",
+   "ccp": 1273,
+   "base": 13725686,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": "file 13.1 MB"
+  },
+  {
+   "source": "CSV",
+   "title": "Distinct customers and overall max price (200,000 rows)",
+   "ccp": 329,
+   "base": 13725686,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": "file 13.1 MB"
+  },
+  {
+   "source": "CSV",
+   "title": "3 priciest APAC app orders",
+   "ccp": 391,
+   "base": 13725686,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "HTTP",
+   "title": "One user: name, email, city",
+   "ccp": 312,
+   "base": 1640,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "HTTP",
+   "title": "One user: just the follower count",
+   "ccp": 255,
+   "base": 1640,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "HTTP",
+   "title": "List of 100 users: id + name",
+   "ccp": 2710,
+   "base": 144255,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
+  },
+  {
+   "source": "HTTP",
+   "title": "List of 100 users: name + company + city",
+   "ccp": 7267,
+   "base": 144255,
+   "ccp_calls": 1,
+   "base_calls": 1,
+   "naive": null,
+   "naive_calls": null,
+   "note": ""
   }
- ],
- "session": {
-  "ccp": 7326,
-  "careful": 9330,
-  "naive": 44741,
-  "ccp_rt": 7,
-  "careful_rt": 12,
-  "naive_rt": 15
- },
- "setup": {
-  "ccp": 1444,
-  "base": 2807
- },
- "parity": true,
- "latency_ms": {
-  "sqlite": [
-   2.683333499589935,
-   3.772292002395261
-  ],
-  "mysql": [
-   2.6485415000934154,
-   8.31912499779719
-  ],
-  "postgres": [
-   6.583646001672605,
-   10.75245800166158
-  ]
- }
+ ]
 }

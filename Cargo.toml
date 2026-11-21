@@ -2,15 +2,22 @@
 resolver = "3"
 members = [
     "crates/ccp-proto",
+    "crates/ccp-mcp",
     "crates/ccp-sql",
+    "crates/ccp-stream",
     "crates/ccp",
     "plugins/mysql-ccp",
     "plugins/postgres-ccp",
     "plugins/sqlite-ccp",
+    "plugins/csv-ccp",
+    "plugins/redis-ccp",
+    "plugins/websocket-ccp",
+    "plugins/socketio-ccp",
+    "plugins/http-ccp",
 ]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/hacimertgokhan/ccp"

@@ -1,0 +1,10 @@
+[package]
+name = "redis-ccp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CCP server for Redis: read-only keys, hashes, lists, sets, sorted sets and streams over a dependency-free RESP client"
+
+[dependencies]
+ccp-proto = { path = "../../crates/ccp-proto" }
+ccp-mcp = { path = "../../crates/ccp-mcp" }

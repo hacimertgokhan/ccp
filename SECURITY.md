@@ -13,15 +13,18 @@ confirmed. Reporters are credited in the release notes unless they prefer otherw
 
 ## In scope
 
-* SQL injection or any way caller text reaches SQL as something other than a bound value
-* Writing to a database through a CCP server
+* SQL injection, or any way caller text reaches SQL as something other than a bound value
+* Redis command injection, or any way to run a command outside the fixed read-only set
+* `http-ccp` request steering: reaching another host, path traversal, following redirects, leaking the bearer token
+* A model-controlled way to make a stream server send or emit anything
+* Writing to any data source through a CCP server
 * Credentials appearing in output, errors or logs
-* Resource exhaustion that bypasses the documented limits (rows, relation rows, depth)
+* Resource exhaustion that bypasses the documented limits (rows, relation rows, depth, scan calls, buffer size, response size, file size)
 
 ## Design guarantees
 
-Servers are read-only, take identifiers only from the database catalog, bind every value,
-cap result sizes, and scrub secrets from errors. Connections are currently plain TCP (TLS is
+Servers are read-only, take identifiers only from the source's own catalog, bind every value, use fixed
+command sets and base URLs, cap result sizes, and scrub secrets from errors. Connections are currently plain TCP (TLS is
 planned): use localhost, a tunnel or a private network, and a dedicated read-only database user.
 
 ## Supported versions
