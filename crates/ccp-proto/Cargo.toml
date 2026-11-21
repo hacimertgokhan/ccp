@@ -1,0 +1,7 @@
+[package]
+name = "ccp-proto"
+version.workspace = true
+edition.workspace = true
+description = "CCP protocol core: query parser, executor, compact value encoding, stdio server loop"
+
+[dependencies]

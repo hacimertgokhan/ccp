@@ -1,0 +1,10 @@
+[package]
+name = "mysql-ccp"
+version.workspace = true
+edition.workspace = true
+description = "CCP server for MySQL/MariaDB (read-only, schema-introspecting)"
+
+[dependencies]
+ccp-proto = { path = "../../crates/ccp-proto" }
+mysql = "28.0.4"
+serde_json = "1.0.154"
